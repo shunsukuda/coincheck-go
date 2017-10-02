@@ -4,32 +4,31 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 )
 
 type CoinCheck struct {
-	accessKey string
-	secretKey string
-	account Account
+	accessKey    string
+	secretKey    string
+	account      Account
 	bank_account BankAccount
-	borrow Borrow
-	deposit Deposit
-	leverage Leverage
-	order Order
-	order_book OrderBook
-	send Send
-	ticker Ticker
-	trade Trade
-	transfer Transfer
-	withdraw Withdraw
+	borrow       Borrow
+	deposit      Deposit
+	leverage     Leverage
+	order        Order
+	order_book   OrderBook
+	send         Send
+	ticker       Ticker
+	trade        Trade
+	transfer     Transfer
+	withdraw     Withdraw
 }
 
-func (c CoinCheck) NewClient(accessKey string, secretKey string) CoinCheck{
+func (c CoinCheck) NewClient(accessKey string, secretKey string) CoinCheck {
 	c.accessKey = accessKey
 	c.secretKey = secretKey
 	c.account = Account{&c}
@@ -74,7 +73,7 @@ func (c CoinCheck) Request(method string, path string, param string) string {
 	}
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
-	fmt.Println(string(body))
+	//fmt.Println(string(body))
 
 	return string(body)
 }
@@ -91,5 +90,3 @@ func ComputeHmac256(message string, secret string) string {
 	h.Write([]byte(message))
 	return hex.EncodeToString(h.Sum(nil))
 }
-
-

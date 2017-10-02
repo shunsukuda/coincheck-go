@@ -16,5 +16,5 @@ func (a Account) leverage_balance() string {
 
 // Get account information.
 func (a Account) info() string {
-	return a.client.Request("GET", "api/accounts/balance", "")
+	return a.client.Request("GET", "api/accounts", "")
 }
