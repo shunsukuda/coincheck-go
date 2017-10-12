@@ -1,4 +1,4 @@
-package main
+package Coincheck
 
 import (
 	"crypto/hmac"
