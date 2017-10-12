@@ -1,7 +1,14 @@
 # coincheck-go
 
 # Install
-Go to CoinCheck folder and run this command ```go run *.go```
+```bash
+go get github.com/shunsukuda/coincheck-go
+```
+
+# Import
+```go
+import cc "github.com/shunsukuda/coincheck-go"
+```
 
 # API
 ```go
