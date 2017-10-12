@@ -7,7 +7,7 @@ go get github.com/shunsukuda/coincheck-go
 
 # Import
 ```go
-import cc "github.com/shunsukuda/coincheck-go"
+import cc "github.com/shunsukuda/coincheck-go/Coincheck"
 ```
 
 # API
