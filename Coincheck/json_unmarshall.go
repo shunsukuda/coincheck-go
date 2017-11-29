@@ -3,7 +3,6 @@ package Coincheck
 import (
 	"encoding/json"
 	"log"
-	"strconv"
 	"time"
 )
 
@@ -17,7 +16,7 @@ type JsonTicker struct {
 	Timestamp int64   `json:"timestamp"`
 }
 
-type UnmarshalTicker JsonTicker
+//type UnmarshalTicker JsonTicker
 
 func (client CoinCheck) GetTicker(marshal int) (js *UnmarshalTicker, raw string) {
 	//var js UnmarshalTicker
@@ -70,7 +69,6 @@ type JsonOrderBook struct {
 	Asks [][]json.Number `json:"asks"`
 	Bids [][]json.Number `json:"bids"`
 }
-
 type UnmarshalOrderBook struct {
 	Asks []Pair
 	Bids []Pair
@@ -213,7 +211,6 @@ type JsonOrderOpens struct {
 		CreatedAt              time.Time   `json:"created_at"`
 	} `json:"orders"`
 }
-
 type UnmarshalOrderOpens struct {
 	Success bool
 	Orders  []struct {
@@ -288,7 +285,6 @@ type JsonTransactions struct {
 		Side        string      `json:"side"`
 	} `json:"transactions"`
 }
-
 type UnmarshalTransactions struct {
 	Success      bool
 	Transactions []struct {
@@ -459,7 +455,6 @@ type JsonLeveragePositions struct {
 		} `json:"close_orders"`
 	} `json:"data"`
 }
-
 type UnmarshalLeveragePositions struct {
 	Success    bool
 	Pagination struct {
@@ -562,7 +557,6 @@ type JsonBalance struct {
 	JpyDebt      json.Number `json:"jpy_debt"`
 	BtcDebt      json.Number `json:"btc_debt"`
 }
-
 type UnmarshalBalance struct {
 	Success      bool
 	Jpy          float64
@@ -610,7 +604,6 @@ type JsonLeverageBalance struct {
 	} `json:"margin_available"`
 	MarginLevel json.Number `json:"margin_level"`
 }
-
 type UnmarshalLeverageBalance struct {
 	Success bool
 	Margin  struct {
@@ -648,7 +641,6 @@ type JsonAccountInfo struct {
 	TakerFee        json.Number `json:"taker_fee"`
 	MakerFee        json.Number `json:"maker_fee"`
 }
-
 type UnmarshalAccountInfo struct {
 	Success         bool
 	Id              int64
