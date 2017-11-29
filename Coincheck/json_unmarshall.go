@@ -3,6 +3,7 @@ package Coincheck
 import (
 	"encoding/json"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -18,16 +19,16 @@ type JsonTicker struct {
 
 type UnmarshalTicker JsonTicker
 
-func (client CoinCheck) GetTicker() *UnmarshalTicker {
-	var js UnmarshalTicker
-	tmp := []byte(client.ticker.all())
-	if len(tmp) == 0 {
-		return nil
+func (client CoinCheck) GetTicker(marshal int) (js *UnmarshalTicker, raw string) {
+	//var js UnmarshalTicker
+	raw = client.ticker.all()
+	if len(raw) == 0 || marshal == 0 {
+		return
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
 	}
-	return &js
+	return
 }
 
 type JsonTrade struct {
@@ -45,15 +46,14 @@ type UnmarshalTrade struct {
 	CreatedAt time.Time
 }
 
-func (client *CoinCheck) GetTrades() []UnmarshalTrade {
+func (client *CoinCheck) GetTradeLog(marshal int) (um []UnmarshalTrade, raw string) {
 	var js []JsonTrade
-	var um []UnmarshalTrade
-	tmp := []byte(client.trade.all())
-	if len(tmp) == 0 {
-		return nil
+	raw = client.trade.all()
+	if len(raw) == 0 || marshal == 0 {
+		return
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
 	}
 	um = make([]UnmarshalTrade, len(js))
 	for i := range js {
@@ -63,7 +63,7 @@ func (client *CoinCheck) GetTrades() []UnmarshalTrade {
 		um[i].OrderType = js[i].OrderType
 		um[i].CreatedAt = js[i].CreatedAt
 	}
-	return um
+	return
 }
 
 type JsonOrderBook struct {
@@ -81,26 +81,123 @@ type Pair struct {
 	Amount float64
 }
 
-func (client *CoinCheck) GetOrderBooks() *UnmarshalOrderBook {
+func (client *CoinCheck) GetOrderBook(marshal int) (um *UnmarshalOrderBook, raw string) {
 	var js JsonOrderBook
-	var um UnmarshalOrderBook
-	tmp := []byte(client.trade.all())
-	if len(tmp) == 0 {
-		return nil
+	raw = client.order_book.all()
+	if len(raw) == 0 || marshal == 0 {
+		return
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
 	}
+	um = &UnmarshalOrderBook{}
+	um.Asks = make([]Pair, len(js.Asks))
+	um.Bids = make([]Pair, len(js.Bids))
 	for i := range js.Asks {
 		um.Asks[i].Rate, _ = js.Asks[i][0].Float64()
 		um.Asks[i].Amount, _ = js.Asks[i][1].Float64()
 		um.Bids[i].Rate, _ = js.Bids[i][0].Float64()
 		um.Bids[i].Amount, _ = js.Bids[i][1].Float64()
 	}
-	return &um
+	return
 }
 
-func (client *CoinCheck) PostOrderCreate(rate int64, amount float64, order_type string) {
+type JsonOrder struct {
+	Success      bool        `json:"success"`
+	ID           int64       `json:"id"`
+	Rate         json.Number `json:"rate"`
+	Amount       json.Number `json:"amount"`
+	OrderType    string      `json:"order_type"`
+	StopLossRate json.Number `json:"stop_loss_rate"`
+	Pair         string      `json:"pair"`
+	CreatedAt    time.Time   `json:"created_at"`
+}
+
+type UnmarshalOrder struct {
+	Success      bool
+	ID           int64
+	Rate         float64
+	Amount       float64
+	OrderType    string
+	StopLossRate float64
+	Pair         string
+	CreatedAt    time.Time
+}
+
+func (client *CoinCheck) PostOrderNew(rate int64, amount float64, order_type string, marshal int) (um *UnmarshalOrder, raw string) {
+	order := `{` +
+		`"rate":"` + strconv.FormatInt(rate, 10) + `",` +
+		`"amount":"` + strconv.FormatFloat(amount, 'f', -1, 64) + `",` +
+		`"order_type":"` + order_type + `",` +
+		`"pair":"btc_jpy"}`
+	var js JsonOrder
+	raw = client.order.create(order)
+	if len(raw) == 0 || marshal == 0 {
+		return
+	}
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
+	}
+	return
+}
+
+func (client *CoinCheck) PostOrderMarketNew(yen int64, amount float64, marshal int) (um *UnmarshalOrder, raw string) {
+	order := `{`
+	order_type := "market_"
+
+	if yen > 0 {
+		order_type += "buy"
+		order += `"market_buy_amount":"` + strconv.FormatInt(yen, 10) + `",`
+	} else if amount > 0.0 {
+		order_type += "sell"
+		order += `"amount":"` + strconv.FormatFloat(amount, 'f', -1, 64) + `",`
+	}
+	order += `"order_type":"` + order_type + `","pair":"btc_jpy"}`
+
+	var js JsonOrder
+	raw = client.order.create(order)
+	if len(raw) == 0 || marshal == 0 {
+		return
+	}
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
+	}
+	return
+}
+
+func (client *CoinCheck) PostOrderLeverageNew(rate int64, amount float64, order_type string, marshal int) (um *UnmarshalOrder, raw string) {
+	order := `{` +
+		`"rate":"` + strconv.FormatInt(rate, 10) + `",` +
+		`"amount":"` + strconv.FormatFloat(amount, 'f', -1, 64) + `",` +
+		`"order_type":"leverage_` + order_type + `",` +
+		`"pair":"btc_jpy"}`
+	var js JsonOrder
+	raw = client.order.create(order)
+	if len(raw) == 0 || marshal == 0 {
+		return
+	}
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
+	}
+	return
+}
+
+func (client *CoinCheck) PostOrderCloseNew(rate int64, amount float64, id int64, order_type string, marshal int) (um *UnmarshalOrder, raw string) {
+	order := `{` +
+		`"rate":"` + strconv.FormatInt(rate, 10) + `",` +
+		`"amount":"` + strconv.FormatFloat(amount, 'f', -1, 64) + `",` +
+		`"position_id":"` + strconv.FormatInt(id, 10) + `",` +
+		`"order_type":"close_` + order_type + `",` +
+		`"pair":"btc_jpy"}`
+	var js JsonOrder
+	raw = client.order.create(order)
+	if len(raw) == 0 || marshal == 0 {
+		return
+	}
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
+	}
+	return
 }
 
 type JsonOrderOpens struct {
@@ -131,17 +228,17 @@ type UnmarshalOrderOpens struct {
 	}
 }
 
-func (client *CoinCheck) GetOrderOpens() *UnmarshalOrderOpens {
+func (client *CoinCheck) GetOrderList(marshal int) (um *UnmarshalOrderOpens, raw string) {
 	var js JsonOrderOpens
-	var um UnmarshalOrderOpens
-	tmp := []byte(client.order.opens())
-	if len(tmp) == 0 {
-		return nil
+	raw = client.order.opens()
+	if len(raw) == 0 || marshal == 0 {
+		return
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
 	}
 	um.Success = js.Success
+	// XXX:Ordersを確保しなければいけない->別に構造体を定義する
 	for i := range js.Orders {
 		um.Orders[i].Id = js.Orders[i].Id
 		um.Orders[i].OrderType = js.Orders[i].OrderType
@@ -152,7 +249,25 @@ func (client *CoinCheck) GetOrderOpens() *UnmarshalOrderOpens {
 		um.Orders[i].StopLossRate, _ = js.Orders[i].StopLossRate.Float64()
 		um.Orders[i].CreatedAt = js.Orders[i].CreatedAt
 	}
-	return &um
+	return
+}
+
+type JsonOrderCancel struct {
+	Success bool  `json:"success"`
+	Id      int64 `json:"id"`
+}
+
+func (client *CoinCheck) PostOrderCancel(id int64, marshal int) (success bool, raw string) {
+	var js JsonOrderCancel
+	raw = client.order.cancel(strconv.FormatInt(id, 10))
+	if len(raw) == 0 || marshal == 0 {
+		return
+	}
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
+	}
+	success = js.Success
+	return
 }
 
 type JsonTransactions struct {
@@ -193,15 +308,14 @@ type UnmarshalTransactions struct {
 	}
 }
 
-func (client *CoinCheck) GetTransactions() *UnmarshalTransactions {
+func (client *CoinCheck) GetTransactions(marshal int) (um *UnmarshalTransactions, raw string) {
 	var js JsonTransactions
-	var um UnmarshalTransactions
-	tmp := []byte(client.order.transactions())
-	if len(tmp) == 0 {
-		return nil
+	raw = client.order.transactions()
+	if len(raw) == 0 || marshal == 0 {
+		return
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
 	}
 	um.Success = js.Success
 	for i := range js.Transactions {
@@ -217,7 +331,7 @@ func (client *CoinCheck) GetTransactions() *UnmarshalTransactions {
 		um.Transactions[i].Liquidity = js.Transactions[i].Liquidity
 		um.Transactions[i].Side = js.Transactions[i].Side
 	}
-	return &um
+	return
 }
 
 /*
@@ -274,12 +388,12 @@ type UnmarshalTransactionsPagination struct {
 func (client *CoinCheck) GetTransactionsPagination() *UnmarshalTransactionsPagination {
 	var js JsonTransactionsPagination
 	var um UnmarshalTransactionsPagination
-	tmp := []byte(client.order.transactionsi_pagination())
-	if len(tmp) == 0 {
+	raw := []byte(client.order.transactionsi_pagination())
+	if len(raw) == 0 {
 		return nil
 	}
-	fmt.Println(string(tmp))
-	if err := json.Unmarshal(tmp, &js); err != nil {
+	fmt.Println(string(raw))
+	if err := json.Unmarshal(raw, &js); err != nil {
 		log.Fatal(err)
 	}
 	um.Success = js.Success
@@ -304,6 +418,7 @@ func (client *CoinCheck) GetTransactionsPagination() *UnmarshalTransactionsPagin
 }
 */
 
+/*
 type JsonLeveragePositions struct {
 	Success    bool `json:"success"`
 	Pagination struct {
@@ -389,11 +504,11 @@ type UnmarshalLeveragePositions struct {
 func (client *CoinCheck) GetLeveragePositions() *UnmarshalLeveragePositions {
 	var js JsonLeveragePositions
 	var um UnmarshalLeveragePositions
-	tmp := []byte(client.leverage.positions())
-	if len(tmp) == 0 {
+	raw := []byte(client.leverage.positions())
+	if len(raw) == 0 {
 		return nil
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
+	if err := json.Unmarshal(raw, &js); err != nil {
 		log.Fatal(err)
 	}
 	um.Success = js.Success
@@ -432,6 +547,7 @@ func (client *CoinCheck) GetLeveragePositions() *UnmarshalLeveragePositions {
 	}
 	return &um
 }
+*/
 
 type JsonBalance struct {
 	Success      bool        `json:"success"`
@@ -461,15 +577,14 @@ type UnmarshalBalance struct {
 	BtcDebt      float64
 }
 
-func (client *CoinCheck) GetBalance() *UnmarshalBalance {
+func (client *CoinCheck) GetBalance(marshal int) (um *UnmarshalBalance, raw string) {
 	var js JsonBalance
-	var um UnmarshalBalance
-	tmp := []byte(client.account.balance())
-	if len(tmp) == 0 {
-		return nil
+	raw = client.account.balance()
+	if len(raw) == 0 || marshal == 0 {
+		return
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
 	}
 	um.Success = js.Success
 	um.Jpy, _ = js.Jpy.Float64()
@@ -482,7 +597,7 @@ func (client *CoinCheck) GetBalance() *UnmarshalBalance {
 	um.BtcLent, _ = js.BtcLent.Float64()
 	um.JpyDebt, _ = js.JpyDebt.Float64()
 	um.BtcDebt, _ = js.BtcDebt.Float64()
-	return &um
+	return
 }
 
 type JsonLeverageBalance struct {
@@ -507,21 +622,20 @@ type UnmarshalLeverageBalance struct {
 	MarginLevel float64
 }
 
-func (client *CoinCheck) GetLeverageBalance() *UnmarshalLeverageBalance {
+func (client *CoinCheck) GetLeverageBalance(marshal int) (um *UnmarshalLeverageBalance, raw string) {
 	var js JsonLeverageBalance
-	var um UnmarshalLeverageBalance
-	tmp := []byte(client.account.leverage_balance())
-	if len(tmp) == 0 {
-		return nil
+	raw = client.account.leverage_balance()
+	if len(raw) == 0 || marshal == 0 {
+		return
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal([]byte(raw), &js); err != nil {
+		return
 	}
-	um.Success = js.Success
+	um.Success = js.Success // XXX.エラー
 	um.Margin.Jpy, _ = js.Margin.Jpy.Float64()
 	um.MarginAvailale.Jpy, _ = js.MarginAvailale.Jpy.Float64()
 	um.MarginLevel, _ = js.MarginLevel.Float64()
-	return &um
+	return
 }
 
 type JsonAccountInfo struct {
@@ -549,11 +663,11 @@ type UnmarshalAccountInfo struct {
 func (client *CoinCheck) GetAccountInfo() *UnmarshalAccountInfo {
 	var js JsonAccountInfo
 	var um UnmarshalAccountInfo
-	tmp := []byte(client.account.info())
-	if len(tmp) == 0 {
+	raw := []byte(client.account.info())
+	if len(raw) == 0 {
 		return nil
 	}
-	if err := json.Unmarshal(tmp, &js); err != nil {
+	if err := json.Unmarshal(raw, &js); err != nil {
 		log.Fatal(err)
 	}
 	um.Success = js.Success
