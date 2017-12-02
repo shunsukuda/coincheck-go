@@ -74,7 +74,7 @@ type UnmarshalOrderBook struct {
 }
 
 type Pair struct {
-	Rate   float64
+	Rate   int64
 	Amount float64
 }
 
@@ -87,13 +87,15 @@ func (client *CoinCheck) GetOrderBook(unmarshal int) (um *UnmarshalOrderBook, ra
 	if err := json.Unmarshal([]byte(raw), &js); err != nil {
 		return
 	}
-	um = &UnmarshalOrderBook{}
+	um = new(UnmarshalOrderBook)
 	um.Asks = make([]Pair, len(js.Asks))
 	um.Bids = make([]Pair, len(js.Bids))
 	for i := range js.Asks {
-		um.Asks[i].Rate, _ = js.Asks[i][0].Float64()
+		rate, _ := js.Asks[i][0].Float64()
+		um.Asks[i].Rate = int64(rate)
 		um.Asks[i].Amount, _ = js.Asks[i][1].Float64()
-		um.Bids[i].Rate, _ = js.Bids[i][0].Float64()
+		rate, _ = js.Bids[i][0].Float64()
+		um.Bids[i].Rate = int64(rate)
 		um.Bids[i].Amount, _ = js.Bids[i][1].Float64()
 	}
 	return
@@ -312,6 +314,8 @@ func (client *CoinCheck) GetTransactions(unmarshal int) (um *UnmarshalTransactio
 	if err := json.Unmarshal([]byte(raw), &js); err != nil {
 		return
 	}
+	um = new(UnmarshalTransactions)
+	// XXX: 構造体の確保
 	um.Success = js.Success
 	for i := range js.Transactions {
 		um.Transactions[i].Id = js.Transactions[i].Id
@@ -579,6 +583,7 @@ func (client *CoinCheck) GetBalance(unmarshal int) (um *UnmarshalBalance, raw st
 	if err := json.Unmarshal([]byte(raw), &js); err != nil {
 		return
 	}
+	um = new(UnmarshalBalance)
 	um.Success = js.Success
 	um.Jpy, _ = js.Jpy.Float64()
 	um.Btc, _ = js.Btc.Float64()
@@ -623,7 +628,8 @@ func (client *CoinCheck) GetLeverageBalance(unmarshal int) (um *UnmarshalLeverag
 	if err := json.Unmarshal([]byte(raw), &js); err != nil {
 		return
 	}
-	um.Success = js.Success // XXX.エラー
+	um = new(UnmarshalLeverageBalance)
+	um.Success = js.Success
 	um.Margin.Jpy, _ = js.Margin.Jpy.Float64()
 	um.MarginAvailale.Jpy, _ = js.MarginAvailale.Jpy.Float64()
 	um.MarginLevel, _ = js.MarginLevel.Float64()
@@ -660,6 +666,7 @@ func (client *CoinCheck) GetAccountInfo(unmarshal int) (um *UnmarshalAccountInfo
 	if err := json.Unmarshal([]byte(raw), &js); err != nil {
 		return
 	}
+	um = new(UnmarshalAccountInfo)
 	um.Success = js.Success
 	um.Id = js.Id
 	um.Email = js.Email
